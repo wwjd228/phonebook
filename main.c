@@ -35,13 +35,21 @@ int main(int argc, char *argv[])
         printf("cannot open the file\n");
         return -1;
     }
-
+#ifndef PHONEBOOKOPT
     /* build the entry */
     entry *pHead, *e;
     pHead = (entry *) malloc(sizeof(entry));
     printf("size of entry : %lu bytes\n", sizeof(entry));
     e = pHead;
     e->pNext = NULL;
+#else
+    hash *e;
+    hash *pHead = malloc(26 * sizeof(hash));
+    for ( int i = 0 ; i < 26 ; i++ )
+        pHead[i].pNamelist = NULL;
+    printf("size of entry : %lu bytes\n", sizeof(pHead[0]));
+    e = pHead;
+#endif
 
 #if defined(__GNUC__)
     __builtin___clear_cache((char *) pHead, (char *) pHead + sizeof(entry));
@@ -56,7 +64,6 @@ int main(int argc, char *argv[])
     }
     clock_gettime(CLOCK_REALTIME, &end);
     cpu_time1 = diff_in_second(start, end);
-
     /* close file as soon as possible */
     fclose(fp);
 
@@ -69,7 +76,6 @@ int main(int argc, char *argv[])
     assert(findName(input, e) &&
            "Did you implement findName() in " IMPL "?");
     assert(0 == strcmp(findName(input, e)->lastName, "zyxel"));
-
 #if defined(__GNUC__)
     __builtin___clear_cache((char *) pHead, (char *) pHead + sizeof(entry));
 #endif
@@ -78,7 +84,6 @@ int main(int argc, char *argv[])
     findName(input, e);
     clock_gettime(CLOCK_REALTIME, &end);
     cpu_time2 = diff_in_second(start, end);
-
     printf("execution time of append() : %lf sec\n", cpu_time1);
     printf("execution time of findName() : %lf sec\n", cpu_time2);
 
