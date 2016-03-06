@@ -1,3 +1,4 @@
+#include <stdio.h>
 #ifndef _PHONEBOOK_H
 #define _PHONEBOOK_H
 
@@ -27,6 +28,12 @@ typedef struct __NAME_HASH {
     name *pNamelist;
 } hash ___cacheline_aligned;
 
+typedef struct __THREAD_ARG {
+    FILE *fp;
+    hash *e;
+} threadArg;
+
 name *findName(char lastname[], hash *list);
 hash *append(char lastName[], hash *list);
+void import(void *arg);
 #endif

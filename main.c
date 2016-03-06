@@ -3,10 +3,14 @@
 #include <string.h>
 #include <time.h>
 #include <assert.h>
+#include <pthread.h>
 
 #include IMPL
 
 #define DICT_FILE "./dictionary/words.txt"
+#define NUMTHREADS 4
+pthread_t callThd[NUMTHREADS];
+pthread_mutex_t mutexsum;
 
 static double diff_in_second(struct timespec t1, struct timespec t2)
 {
@@ -43,18 +47,24 @@ int main(int argc, char *argv[])
     e = pHead;
     e->pNext = NULL;
 #else
+    threadArg *threadData = malloc(sizeof(struct __THREAD_ARG));
+    void *status;
     hash *e;
     hash *pHead = malloc(26 * sizeof(hash));
     for ( int i = 0 ; i < 26 ; i++ )
         pHead[i].pNamelist = NULL;
     printf("size of entry : %lu bytes\n", sizeof(pHead[0]));
     e = pHead;
+    threadData ->fp = fp;
+    threadData ->e = e;
 #endif
 
 #if defined(__GNUC__)
     __builtin___clear_cache((char *) pHead, (char *) pHead + sizeof(entry));
 #endif
+
     clock_gettime(CLOCK_REALTIME, &start);
+#ifndef PHONEBOOKOPT
     while (fgets(line, sizeof(line), fp)) {
         while (line[i] != '\0')
             i++;
@@ -62,10 +72,31 @@ int main(int argc, char *argv[])
         i = 0;
         e = append(line, e);
     }
-    clock_gettime(CLOCK_REALTIME, &end);
-    cpu_time1 = diff_in_second(start, end);
+
+#else
+    pthread_attr_t attr;
+    pthread_mutex_init(&mutexsum, NULL);
+
+    /* Create threads */
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+    for (long t = 0 ; t < NUMTHREADS ; t++) {
+        pthread_create(&callThd[t], &attr, import, (void *)threadData);
+    }
+
+    pthread_attr_destroy(&attr);
+
+    for (long t = 0 ; t < NUMTHREADS ; t++) {
+        pthread_join(callThd[t], &status);
+    }
+
+#endif
     /* close file as soon as possible */
     fclose(fp);
+
+    clock_gettime(CLOCK_REALTIME, &end);
+    cpu_time1 = diff_in_second(start, end);
 
     e = pHead;
 
@@ -86,9 +117,9 @@ int main(int argc, char *argv[])
     cpu_time2 = diff_in_second(start, end);
     printf("execution time of append() : %lf sec\n", cpu_time1);
     printf("execution time of findName() : %lf sec\n", cpu_time2);
-
     /* FIXME: release all allocated entries */
     free(pHead);
-
+    pthread_mutex_destroy(&mutexsum);
+    pthread_exit(NULL);
     return 0;
 }
